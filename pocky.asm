@@ -5,228 +5,383 @@
 //==============================================================================
 
 //==============================================================================
+// Ram map  
+//==============================================================================
+    $00 byte nmi_ready
+    $01 byte ???
+    $02 word nmi_tick
+    $04 word mode
+    $06 byte nmi_vram
+    $08 word cntrl1
+    $0A word trigger1
+    $0C word cntrl2
+    $0E word trigger2
+    $10 byte local[0x10]
+    $20 word bg1hofs
+    $22 word bg1vofs
+    $24 word bg2hofs
+    $26 word bg2vofs
+    $28 word bg3hofs
+    $2A word bg3vofs
+    $2C byte mosaic
+    $4C word ???
+    $50 word ???
+    $52 word ???
+    $68 word ???
+    $B0 byte vhtimen
+    $B1 word vtime
+    $B4 word ???
+    $B8 word ???
+    $BA byte ???
+    $C0 word ???
+    $CA byte cgswsel
+    $CB byte cgadsub
+    $CE byte tmw
+    $CF byte tsw
+    $EC byte cgselect
+    $ED byte hdmaen
+    $EE byte tm
+    $EF byte ts
+    $F0 word apu_cmd0
+    $F2 word apu_cmd1
+    $F4 word apu_cmd2
+    $F6 word apu_cmd3
+    $F8 word apu_cmd4
+    $FA word apu_cmd5
+    $FC word apu_cmd6
+    $FE word apu_cmd7
+  $012A word ???
+  $0220 byte oam[0x0220]
+  $0522 word nmi_vindex
+  $0524 word nmi_vdata[0x????]
+  $0600 byte ???[0x0400]
+  $0A40 word ???
+  $0A4E byte apu_tick
+  $0A50 word ???
+  $0A98 word ???
+  $0A9A word ???
+  $0F00 word ???
+  $0F20 word ???
+  $0F22 word ???
+  $0F24 word ???
+  $0F26 byte brightness
+  $0F28 word ???
+  $0FFC word bg4hofs
+  $0FFE word bg4vofs
+  $1000 byte bgmode
+  $1014 word m7a
+  $1016 word m7b
+  $1018 word m7c
+  $101A word m7d
+  $101C word m7x
+  $101E word m7y
+$7F0002 word nmi_bg1v
+$7F0012 word nmi_bg2v
+$7F0022 word nmi_bg1h
+$7F0032 word nmi_bg2h
+$7E2000 word cgram[0x0100]
+$7E2200 word cgram2[0x0100]
+$7E7000 byte ???[0x1000]
+$7F8000 byte decode_buffer[0x????]
+
+//==============================================================================
+// Rom map  
+//==============================================================================
+
+// Bank 0x00 ===================================================================
+$008000 vec  Rst
+$0081CE jsr  Joy
+$0081F7 vec  Irq
+// ...
+$0089F7 jsr  ???
+$008A09 word ???[0x08]
+$008B3B jsr  ???
+// ...
+$008BA9 jsr  ???
+// ...
+$008BBD jsr  ???
+// ...
+$008BE8 jsr  ???
+$008C72 jsr  DecodeBg3
+$008CB8 jsr  Decode
+$008CBD jsl  Decode_l
+$008CDF jsr  DecodeLoop
+$008DC9 jsr  DecodeCopy
+$008E49 jsr  NmiVram
+$008E9D vec  Nmi
+$0090A6 vec  Brk
+$0090A7 jsr  ???
+// ...
+$00913D jsl  Mode
+$009149 word modes[0x5B]
+// ...
+$00A08A jsr  ???
+// ...
+$00A0A1 jsr  ???
+// ...
+$00BB33 jsr  Decode2Vram
+// ...
+$00BBC5 jsr  Decode2Cgwram
+// ...
+$00C418 jsl  EnableNmi
+$00C428 jsl  DisableNmi
+// ...
+$00C44E jsr  ??? // Fade mode related
+// ...
+$00C6BB jsl  ??? // Fade mode related
+// ...
+$00C75E jsl  ModeLicenseLoad
+// ...
+$00FB78 jsr  DmaBg1v
+$00FBE5 jsr  DmaBg2v
+$00FC52 jsr  DmaBg1h
+$00FCCE jsr  DmaBg2h
+// ...
+$00FFC0 byte rom_header[0x20]
+$00FFE0 word vectors[0x10]
+
+// Bank 0x02 ===================================================================
+$02B006 jsl  Bg3Decode_l
+$02B012 jsr  Bg3DecodeHorz
+$02B019 jsr  Bg3DecodeVert
+$02B020 jsr  Bg3DecodeLoop
+$02B0D3 jsr  Bg3DecodeCopy
+$02B0E7 jsr  Bg3DecodeInc
+$02B0EF jsr  Bg3DecodeInc2
+$02B0F7 word ???[0x01] // bg3 indirect table
+$02B0F9 byte ???       // bg3 encoded maps
+$02B7A3 jsr  Bg3DecodeMap
+$02B7B0 word bg3maps[0x0C]
+// ...
+$02D831 jsl  ???
+
+// Bank 0x08 ===================================================================
+$088000 jsl  ??? // Audio boot loader (and driver?)
+
+//==============================================================================
 // Bank 0x00
 //==============================================================================
 
 // Reset =======================================================================
                                                            ;Rst() {
-008000 78          SEI
-008001 D8          CLD
-008002 18          CLC
-008003 FB          XCE
-008004 C2 F8       REP #$F8
-008006 A9 00 00    LDA #$0000
-008009 5B          TCD
-00800A 48          PHA
-00800B AB          PLB
-00800C A9 1F 02    LDA #$021F
-00800F 1B          TCS
-008010 A9 00 00    LDA #$0000
-008013 8F 00 00 7F STA $7F0000
-008017 AA          TAX
-008018 9B          TXY
-008019 C8          INY
-00801A A9 FE FF    LDA #$FFFE
-00801D 54 7F 7F    MVN $7F,$7F
-008020 A2 00 20    LDX #$2000
-008023 9B          TXY
-008024 A9 FE CF    LDA #$CFFE
-008027 54 7E 7F    MVN $7F,$7E
-00802A A2 00 02    LDX #$0200
-00802D 9B          TXY
-00802E A9 FF 1D    LDA #$1DFF
-008031 54 00 7F    MVN $7F,$00
-008034 A2 00 00    LDX #$0000
-008037 9B          TXY
-008038 A9 7F 01    LDA #$017F
-00803B 54 00 7F    MVN $7F,$00
-00803E E2 20       SEP #$20
-008040 A9 00       LDA #$00
-008042 48          PHA
-008043 AB          PLB
-008044 9C 40 21    STZ $2140
-008047 9C 41 21    STZ $2141
-00804A 9C 42 21    STZ $2142
-00804D 9C 43 21    STZ $2143
-008050 64 2C       STZ $2C
-008052 9C 00 42    STZ $4200
-008055 9C 0B 42    STZ $420B
-008058 9C 0C 42    STZ $420C
-00805B A9 01       LDA #$01
-00805D 8D 09 42    STA $4209
-008060 9C 0A 42    STZ $420A
-008063 A9 FF       LDA #$FF
-008065 8D 01 42    STA $4201
-008068 A9 8F       LDA #$8F
-00806A 8D 00 21    STA $2100
-00806D A9 63       LDA #$63
-00806F 8D 01 21    STA $2101
-008072 9C 06 21    STZ $2106
-008075 A9 09       LDA #$09
-008077 8D 05 21    STA $2105
-00807A A9 43       LDA #$43
-00807C 8D 07 21    STA $2107
-00807F A9 33       LDA #$33
-008081 8D 08 21    STA $2108
-008084 A9 59       LDA #$59
-008086 8D 09 21    STA $2109
-008089 9C 0A 21    STZ $210A
-00808C A9 00       LDA #$00
-00808E 8D 0B 21    STA $210B
-008091 A9 55       LDA #$55
-008093 8D 0C 21    STA $210C
-008096 A9 00       LDA #$00
-008098 A2 03 00    LDX #$0003
-00809B 9D 0D 21    STA $210D,X
-00809E 9D 0D 21    STA $210D,X
-0080A1 CA          DEX
-0080A2 10 F7       BPL $F7    [$809B]
-0080A4 A2 0B 00    LDX #$000B
-0080A7 9D 20 00    STA $0020,X
-0080AA CA          DEX
-0080AB 10 FA       BPL $FA    [$80A7]
-0080AD A9 80       LDA #$80
-0080AF 8D 15 21    STA $2115
-0080B2 C2 F8       REP #$F8
-0080B4 A9 00 60    LDA #$6000
-0080B7 8D 16 21    STA $2116
-0080BA 9C 1A 21    STZ $211A
-0080BD 9C 1C 21    STZ $211C
-0080C0 9C 1E 21    STZ $211E
-0080C3 9C 20 21    STZ $2120
-0080C6 9C 22 21    STZ $2122
-0080C9 9C 24 21    STZ $2124
-0080CC 9C 26 21    STZ $2126
-0080CF 9C 28 21    STZ $2128
-0080D2 9C 2A 21    STZ $212A
-0080D5 9C 33 21    STZ $2133
-0080D8 64 CE       STZ $CE
-0080DA E2 20       SEP #$20
-0080DC 64 00       STZ $00
-0080DE 64 01       STZ $01
-0080E0 C2 F8       REP #$F8
-0080E2 64 20       STZ $20
-0080E4 64 24       STZ $24
-0080E6 64 28       STZ $28
-0080E8 9C FC 0F    STZ $0FFC
-0080EB 64 A6       STZ $A6
-0080ED 9C 4E 0A    STZ $0A4E
-0080F0 E2 20       SEP #$20
-0080F2 A2 FF 01    LDX #$01FF
-0080F5 A9 F0       LDA #$F0
-0080F7 9D 20 02    STA $0220,X
-0080FA CA          DEX
-0080FB 10 FA       BPL $FA    [$80F7]
-0080FD 20 A7 90    JSR $90A7
-008100 E2 20       SEP #$20
-008102 A9 00       LDA #$00
-008104 A2 FF 10    LDX #$10FF 
-008107 9D 00 0F    STA $0F00,X
-00810A CA          DEX
-00810B 10 FA       BPL $FA    [$8107]
-00810D A2 FF 0F    LDX #$0FFF
-008110 9F 00 70 7E STA $7E7000,X
-008114 CA          DEX
-008115 10 F9       BPL $F9    [$8110]
-008117 A2 F0 00    LDX #$00F0
-00811A 9D 00 00    STA $0000,X
-00811D E8          INX
-00811E E8          INX
-00811F E0 30 01    CPX #$0130
-008122 D0 F6       BNE $F6    [$811A]
-008124 C2 F8       REP #$F8
-008126 A9 00 40    LDA #$4000
-008129 8D 98 0A    STA $0A98
-00812C 8D 9A 0A    STA $0A9A
-00812F 22 31 D8 02 JSL $02D831
-008133 C2 F8       REP #$F8
-008135 9C 2A 01    STZ $012A
-008138 A9 14 82    LDA #$8214
-00813B 85 B4       STA $B4
-00813D 85 B8       STA $B8
-00813F 9C 40 0A    STZ $0A40
-008142 64 CA       STZ $CA
-008144 A9 08 08    LDA #$0808
-008147 85 C0       STA $C0
-008149 20 BD 8B    JSR $8BBD
-00814C A5 C0       LDA $C0
-00814E 85 68       STA $68
-008150 A9 00 00    LDA #$0000
-008153 8D 28 0F    STA $0F28
-008156 A9 01 00    LDA #$0001
-008159 8D 24 0F    STA $0F24
-00815C A9 00 00    LDA #$0000
-00815F 20 4E C4    JSR $C44E
-008162 C2 F8       REP #$F8
-008164 A9 00 00    LDA #$0000
-008167 85 4C       STA $4C
-008169 85 50       STA $50
-00816B 85 52       STA $52
-00816D A9 58 00    LDA #$0058
-008170 85 04       STA $04
-008172 A9 00 80    LDA #$8000
-008175 A0 09 00    LDY #$0009
-008178 20 A9 8B    JSR $8BA9
-00817B C2 F8       REP #$F8
-00817D A9 00 EC    LDA #$EC00
-008180 A0 15 00    LDY #$0015
-008183 20 A9 8B    JSR $8BA9
-008186 C2 F8       REP #$F8
-008188 A9 67 80    LDA #$8067
-00818B A0 08 00    LDY #$0008
-00818E 20 A9 8B    JSR $8BA9
-008191 E2 20       SEP #$20
-008193 AD 10 42    LDA $4210
-008196 A9 80       LDA #$80
-008198 8D 15 21    STA $2115
-00819B A9 A0       LDA #$A0
-00819D 8D 00 42    STA $4200
-0081A0 58          CLI
-0081A1 A9 00       LDA #$00
-0081A3 8D 00 21    STA $2100
-0081A6 A9 01       LDA #$01
-0081A8 8D 42 21    STA $2142
-0081AB 20 CE 81    JSR $81CE      -: JSR Joy       ; for (;;) {
-0081AE 22 3D 91 00 JSL $00913D       JSL Mode      ;   Joy();
-0081B2 EA          NOP               NOP           ;   Mode();
-0081B3 EA          NOP               NOP           ;
-0081B4 EA          NOP               NOP           ;
-0081B5 EA          NOP               NOP           ;
-0081B6 EA          NOP               NOP           ;
-0081B7 EA          NOP               NOP           ;
-0081B8 EA          NOP               NOP           ;
-0081B9 EA          NOP               NOP           ;
-0081BA C2 F8       REP #$F8          REP #$F8      ;   Rep(0xF8);
-0081BC A9 1F 02    LDA #$021F        LDA #$021F    ;   S = 0x021F;
-0081BF 1B          TCS               TCS           ;
-0081C0 E2 20       SEP #$20          SEP #$20      ;   Sep(0x20);
-0081C2 A9 FF       LDA #$FF          LDA #$FF      ;   wait = 0xFF;
-0081C4 8D 00 00    STA $0000         STA wait      ;
-0081C7 AD 00 00    LDA $0000     --: LDA wait      ;   while(wait);
-0081CA D0 FB       BNE $FB           BNE --        ;
-0081CC 80 DD       BRA $DD           BRA -         ; }
+008000 78          SEI                 SEI                 ; Sei(); // disable interrupts
+008001 D8          CLD                 CLD                 ; Cld(); // binary mode
+008002 18          CLC                 CLC                 ; E = 0; // native mode
+008003 FB          XCE                 XCE                 ; 
+008004 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+008006 A9 00 00    LDA #$0000          LDA #$0000          ; D = 0x0000; // direct page
+008009 5B          TCD                 TCD                 ;
+00800A 48          PHA                 PHA                 ; B = 0x00; // data bank
+00800B AB          PLB                 PLB                 ;
+00800C A9 1F 02    LDA #$021F          LDA #$021F          ; S = 0x021F; // stack
+00800F 1B          TCS                 TCS                 ; // reset wram
+008010 A9 00 00    LDA #$0000          LDA #$0000          ; $7F0000 = 0x0000;
+008013 8F 00 00 7F STA $7F0000         STA $7F0000         ; // zero 0x7F0000 - 0x7FFFFF
+008017 AA          TAX                 TAX                 ; Mvn(0x7F0000, 0x7F0001, 0x0000);
+008018 9B          TXY                 TXY                 ;
+008019 C8          INY                 INY                 ;
+00801A A9 FE FF    LDA #$FFFE          LDA #$FFFE          ;
+00801D 54 7F 7F    MVN $7F,$7F         MVN $7F,$7F         ; // zero 0x7E2000 - 0x7EEFFE
+008020 A2 00 20    LDX #$2000          LDX #$2000          ; Mvn(0x7F2000, 0x7E2000, 0xCFFE);
+008023 9B          TXY                 TXY                 ;
+008024 A9 FE CF    LDA #$CFFE          LDA #$CFFE          ;
+008027 54 7E 7F    MVN $7F,$7E         MVN $7F,$7E         ; // zero 0x000200 - 0x001FFF
+00802A A2 00 02    LDX #$0200          LDX #$0200          ; Mvn(0x7F0200, 0x000200, 0x1DFF);
+00802D 9B          TXY                 TXY                 ;
+00802E A9 FF 1D    LDA #$1DFF          LDA #$1DFF          ;
+008031 54 00 7F    MVN $7F,$00         MVN $7F,$00         ; // zero 0x000000 - 0x00017F
+008034 A2 00 00    LDX #$0000          LDX #$0000          ; Mvn(0x7F0000, 0x000000, 0x017F);
+008037 9B          TXY                 TXY                 ;
+008038 A9 7F 01    LDA #$017F          LDA #$017F          ;
+00803B 54 00 7F    MVN $7F,$00         MVN $7F,$00         ; // reset registers
+00803E E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+008040 A9 00       LDA #$00            LDA #$00            ; B = 0x00;
+008042 48          PHA                 PHA                 ;
+008043 AB          PLB                 PLB                 ;
+008044 9C 40 21    STZ $2140           STZ APUIO0          ; APUIO0 = 0x00;
+008047 9C 41 21    STZ $2141           STZ APUIO1          ; APUIO1 = 0x00;
+00804A 9C 42 21    STZ $2142           STZ APUIO2          ; APUIO2 = 0x00;
+00804D 9C 43 21    STZ $2143           STZ APUIO3          ; APUIO3 = 0x00;
+008050 64 2C       STZ $2C             STZ mosaic          ; mosaic = 0x00;
+008052 9C 00 42    STZ $4200           STZ NMITIMEN        ; NMITIMEN = 0x00;
+008055 9C 0B 42    STZ $420B           STZ MDMAEN          ; MDMAEN = 0x00;
+008058 9C 0C 42    STZ $420C           STZ HDMAEN          ; HDMAEN = 0x00;
+00805B A9 01       LDA #$01            LDA #$01            ; VTIME = 0x0001;
+00805D 8D 09 42    STA $4209           STA VTIME.lo        ;
+008060 9C 0A 42    STZ $420A           STZ VTIME.hi        ;
+008063 A9 FF       LDA #$FF            LDA #$FF            ; WRIO = 0xFF;
+008065 8D 01 42    STA $4201           STA WRIO            ;
+008068 A9 8F       LDA #$8F            LDA #$8F            ; INIDISP = 0x8F;
+00806A 8D 00 21    STA $2100           STA INIDISP         ;
+00806D A9 63       LDA #$63            LDA #$63            ; OBJSEL = 0x63;
+00806F 8D 01 21    STA $2101           STA OBJSEL          ;
+008072 9C 06 21    STZ $2106           STZ MOSAIC          ; MOSAIC = 0x00;
+008075 A9 09       LDA #$09            LDA #$09            ; BGMODE = 0x09;
+008077 8D 05 21    STA $2105           STA BGMODE          ;
+00807A A9 43       LDA #$43            LDA #$43            ; BG1SC = 0x43;
+00807C 8D 07 21    STA $2107           STA BG1SC           ;
+00807F A9 33       LDA #$33            LDA #$33            ; BG2SC = 0x33;
+008081 8D 08 21    STA $2108           STA BG2SC           ;
+008084 A9 59       LDA #$59            LDA #$59            ; BG3SC = 0x59;
+008086 8D 09 21    STA $2109           STA BG3SC           ;
+008089 9C 0A 21    STZ $210A           STZ BG4SC           ; BG4SC = 0x00;
+00808C A9 00       LDA #$00            LDA #$00            ; BG12NBA = 0x00;
+00808E 8D 0B 21    STA $210B           STA BG12NBA         ;
+008091 A9 55       LDA #$55            LDA #$55            ; BG34NBA = 0x55;
+008093 8D 0C 21    STA $210C           STA BG34NBA         ;
+008096 A9 00       LDA #$00            LDA #$00            ; for (X = 0x0003; X > 0; X--) {
+008098 A2 03 00    LDX #$0003          LDX #$0003          ;
+00809B 9D 0D 21    STA $210D,X      -: STA BG1HOFS,X       ;   BG1HOFS[X] = 0x00;
+00809E 9D 0D 21    STA $210D,X         STA BG1HOFS,X       ;   BG1HOFS[X] = 0x00;
+0080A1 CA          DEX                 DEX                 ;
+0080A2 10 F7       BPL $F7             BPL -               ; }
+0080A4 A2 0B 00    LDX #$000B          LDX #$000B          ; for (X = 0x000B; X > 0; X--) {
+0080A7 9D 20 00    STA $0020,X      -: STA bg1hofs,X       ;   bg1hofs[X] = 0x00;
+0080AA CA          DEX                 DEX                 ;
+0080AB 10 FA       BPL $FA             BPL -               ; }
+0080AD A9 80       LDA #$80            LDA #$80            ; VMAINC = 0x80;
+0080AF 8D 15 21    STA $2115           STA VMAINC          ; // highly improper register clear
+0080B2 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+0080B4 A9 00 60    LDA #$6000          LDA #$6000          ; VMADD = 0x6000;
+0080B7 8D 16 21    STA $2116           STA VMADD           ;
+0080BA 9C 1A 21    STZ $211A           STZ M7SEL           ; M7SEL = 0x00; M7A = 0x00;
+0080BD 9C 1C 21    STZ $211C           STZ M7B             ; M7B = 0x00; M7C = 0x00;
+0080C0 9C 1E 21    STZ $211E           STZ M7D             ; M7D = 0x00; M7X = 0x00;
+0080C3 9C 20 21    STZ $2120           STZ M7Y             ; M7Y = 0x00; CGADD = 0x00;
+0080C6 9C 22 21    STZ $2122           STZ CGDATA          ; CGDATA = 0x00; W12SEL = 0x00;
+0080C9 9C 24 21    STZ $2124           STZ W34SEL          ; W34SEL = 0x00; WOBJSEL = 0x00;
+0080CC 9C 26 21    STZ $2126           STZ WH0             ; WH0 = 0x00; WH1 = 0x00;
+0080CF 9C 28 21    STZ $2128           STZ WH2             ; WH2 = 0x00; WH3 = 0x00;
+0080D2 9C 2A 21    STZ $212A           STZ WBGLOG          ; WBGLOG = 0x00; WOBJLOG = 0x00;
+0080D5 9C 33 21    STZ $2133           STZ SETINI          ; SETINI = 0x00; MPY.lo = 0x00;
+0080D8 64 CE       STZ $CE             STZ tmw             ; tmw = 0x00; tsw = 0x00; // reset memory
+0080DA E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+0080DC 64 00       STZ $00             STZ nmi_ready       ; nmi_ready = 0x00;
+0080DE 64 01       STZ $01             STZ $01             ; $01 = 0x00;
+0080E0 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+0080E2 64 20       STZ $20             STZ bg1hofs         ; bg1hofs = 0x0000;
+0080E4 64 24       STZ $24             STZ bg2hofs         ; bg2hofs = 0x0000;
+0080E6 64 28       STZ $28             STZ bg3hofs         ; bg3hofs = 0x0000;
+0080E8 9C FC 0F    STZ $0FFC           STZ bg4hofs         ; bg4hofs = 0x0000;
+0080EB 64 A6       STZ $A6             STZ $A6             ; $A6 = 0x0000;
+0080ED 9C 4E 0A    STZ $0A4E           STZ apu_tick        ; apu_tick = 0x0000;
+0080F0 E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+0080F2 A2 FF 01    LDX #$01FF          LDX #$01FF          ; for (X = 0x01FF; X > 0; X--) {
+0080F5 A9 F0       LDA #$F0            LDA #$F0            ;   oam[X] = 0xF0;
+0080F7 9D 20 02    STA $0220,X      -: STA oam,X           ;
+0080FA CA          DEX                 DEX                 ;
+0080FB 10 FA       BPL $FA             BPL -               ; }
+0080FD 20 A7 90    JSR $90A7           JSR $90A7           ; $90A7();
+008100 E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+008102 A9 00       LDA #$00            LDA #$00            ; for (X = 0x10FF; X > 0; X--) {
+008104 A2 FF 10    LDX #$10FF          LDX #$10FF          ;
+008107 9D 00 0F    STA $0F00,X      -: STA $0F00,X         ;   $0F00[X] = 0x00;
+00810A CA          DEX                 DEX                 ;
+00810B 10 FA       BPL $FA             BPL -               ; }
+00810D A2 FF 0F    LDX #$0FFF          LDX #$0FFF          ; for (X = 0x0FFF; X > 0; X--) {
+008110 9F 00 70 7E STA $7E7000,X    -: STA $7E7000,X       ;   $7E7000[X] = 0x00;
+008114 CA          DEX                 DEX                 ;
+008115 10 F9       BPL $F9             BPL -               ; }
+008117 A2 F0 00    LDX #$00F0          LDX #$00F0          ; for (X = 0x00F0; X != 0x0130; X += 2) {
+00811A 9D 00 00    STA $0000,X      -: STA $0000,X         ;   $0000[X] = 0x00;
+00811D E8          INX                 INX                 ;
+00811E E8          INX                 INX                 ;
+00811F E0 30 01    CPX #$0130          CPX #$0130          ;
+008122 D0 F6       BNE $F6             BNE -               ; }
+008124 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+008126 A9 00 40    LDA #$4000          LDA #$4000          ; $0A98 = 0x4000;
+008129 8D 98 0A    STA $0A98           STA $0A98           ;
+00812C 8D 9A 0A    STA $0A9A           STA $0A9A           ; $0A9A = 0x4000;
+00812F 22 31 D8 02 JSL $02D831         JSL $02D831         ; $02D831();
+008133 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+008135 9C 2A 01    STZ $012A           STZ $012A           ; $012A = 0x0000;
+008138 A9 14 82    LDA #$8214          LDA #$8214          ; $B4 = 0x8214;
+00813B 85 B4       STA $B4             STA $B4             ;
+00813D 85 B8       STA $B8             STA $B8             ; $B8 = 0x8214;
+00813F 9C 40 0A    STZ $0A40           STZ $0A40           ; $0A40 = 0x0000;
+008142 64 CA       STZ $CA             STZ $CA             ; cgswsel = 0x00; cgadsub = 0x00;
+008144 A9 08 08    LDA #$0808          LDA #$0808          ; $C0 = 0x0808;
+008147 85 C0       STA $C0             STA $C0             ;
+008149 20 BD 8B    JSR $8BBD           JSR $8BBD           ; $8BBD();
+00814C A5 C0       LDA $C0             LDA $C0             ; $68 = $C0;
+00814E 85 68       STA $68             STA $68             ;
+008150 A9 00 00    LDA #$0000          LDA #$0000          ; $0F28 = 0x0000;
+008153 8D 28 0F    STA $0F28           STA $0F28           ;
+008156 A9 01 00    LDA #$0001          LDA #$0001          ; $0F24 = 0x0001;
+008159 8D 24 0F    STA $0F24           STA $0F24           ;
+00815C A9 00 00    LDA #$0000          LDA #$0000          ; $C44E(0x0000);
+00815F 20 4E C4    JSR $C44E           JSR $C44E           ;
+008162 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+008164 A9 00 00    LDA #$0000          LDA #$0000          ; $4C = 0x0000;
+008167 85 4C       STA $4C             STA $4C             ;
+008169 85 50       STA $50             STA $50             ; $50 = 0x0000;
+00816B 85 52       STA $52             STA $52             ; $52 = 0x0000;
+00816D A9 58 00    LDA #$0058          LDA #$0058          ; mode = 0x0058; // load license
+008170 85 04       STA $04             STA mode            ;
+008172 A9 00 80    LDA #$8000          LDA #$8000          ; $8BA9(0x8000, 0x0009);
+008175 A0 09 00    LDY #$0009          LDY #$0009          ;
+008178 20 A9 8B    JSR $8BA9           JSR $8BA9           ;
+00817B C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+00817D A9 00 EC    LDA #$EC00          LDA #$EC00          ; $8BA9(0xEC00, 0x0015);
+008180 A0 15 00    LDY #$0015          LDY #$0015          ;
+008183 20 A9 8B    JSR $8BA9           JSR $8BA9           ;
+008186 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+008188 A9 67 80    LDA #$8067          LDA #$8067          ; $8BA9(0x8067, 0x0008);
+00818B A0 08 00    LDY #$0008          LDY #$0008          ;
+00818E 20 A9 8B    JSR $8BA9           JSR $8BA9           ;
+008191 E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+008193 AD 10 42    LDA $4210           LDA RDNMI           ; RDNMI;
+008196 A9 80       LDA #$80            LDA #$80            ; VMAIN = 0x80;
+008198 8D 15 21    STA $2115           STA VMAINC          ;
+00819B A9 A0       LDA #$A0            LDA #$A0            ; INIDISP = 0xA0;
+00819D 8D 00 42    STA $4200           STA INIDISP         ;
+0081A0 58          CLI                 CLI                 ; Cli();
+0081A1 A9 00       LDA #$00            LDA #$00            ; INIDISP = 0x00;
+0081A3 8D 00 21    STA $2100           STA INIDISP         ;
+0081A6 A9 01       LDA #$01            LDA #$01            ; APUIO2 = 0x01;
+0081A8 8D 42 21    STA $2142           STA APUIO2          ; // main loop
+0081AB 20 CE 81    JSR $81CE        -: JSR Joy             ; for (;;) {
+0081AE 22 3D 91 00 JSL $00913D         JSL Mode            ;   Joy();
+0081B2 EA          NOP                 NOP                 ;   Mode();
+0081B3 EA          NOP                 NOP                 ;
+0081B4 EA          NOP                 NOP                 ;
+0081B5 EA          NOP                 NOP                 ;
+0081B6 EA          NOP                 NOP                 ;
+0081B7 EA          NOP                 NOP                 ;
+0081B8 EA          NOP                 NOP                 ;
+0081B9 EA          NOP                 NOP                 ;
+0081BA C2 F8       REP #$F8            REP #$F8            ;   Rep(0xF8);
+0081BC A9 1F 02    LDA #$021F          LDA #$021F          ;   S = 0x021F;
+0081BF 1B          TCS                 TCS                 ;
+0081C0 E2 20       SEP #$20            SEP #$20            ;   Sep(0x20);
+0081C2 A9 FF       LDA #$FF            LDA #$FF            ;   nmi_ready = 0xFF;
+0081C4 8D 00 00    STA $0000           STA nmi_ready       ;
+0081C7 AD 00 00    LDA $0000       --: LDA nmi_ready       ;   while(nmi_ready);
+0081CA D0 FB       BNE $FB             BNE --              ;
+0081CC 80 DD       BRA $DD             BRA -               ; }
+                                                           ;}
 
 // Joy =========================================================================
-                                                   ;Joy() {
-0081CE E2 20       SEP #$20          SEP #$20      ; Sep(0x20);
-0081D0 AD 12 42    LDA $4212      -: LDA HVBJOY    ; while(HVBJOY & 0x0x0001);
-0081D3 6A          ROR A             ROR A         ;
-0081D4 B0 FA       BCS $FA           BCS -         ;
-0081D6 C2 20       REP #$20          REP #$20      ; Rep(0x20);
-0081D8 AD 18 42    LDA $4218         LDA CNTRL1    ; trigger1 = CNTRL1 ^ cntrl1 & CNTRL1;
-0081DB 45 08       EOR $08           EOR cntrl1    ;
-0081DD 2D 18 42    AND $4218         AND CNTRL1    ;
-0081E0 85 0C       STA $0C           STA trigger1  ;
-0081E2 AD 18 42    LDA $4218         LDA CNTRL1    ; cntrl1 = CNTRL1;
-0081E5 85 08       STA $08           STA cntrl1    ;
-0081E7 AD 1A 42    LDA $421A         LDA CNTRL2    ; trigger2 = CNTRL2 ^ cntrl1 & CNTRL2;
-0081EA 45 0A       EOR $0A           EOR cntrl2    ;
-0081EC 2D 1A 42    AND $421A         AND CNTRL2    ;
-0081EF 85 0E       STA $0E           STA trigger2  ;
-0081F1 AD 1A 42    LDA $421A         LDA CNTRL2    ;
-0081F4 85 0A       STA $0A           STA cntrl2    ; cntrl2 = CNTRL2;
-0081F6 60          RTS               RTS           ; return;
-                                                   ;}
+                                                           ;Joy() {
+0081CE E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+0081D0 AD 12 42    LDA $4212        -: LDA HVBJOY          ; while(HVBJOY & 0x0x0001);
+0081D3 6A          ROR A               ROR A               ;
+0081D4 B0 FA       BCS $FA             BCS -               ;
+0081D6 C2 20       REP #$20            REP #$20            ; Rep(0x20);
+0081D8 AD 18 42    LDA $4218           LDA CNTRL1          ; trigger1 = CNTRL1 ^ cntrl1 & CNTRL1;
+0081DB 45 08       EOR $08             EOR cntrl1          ;
+0081DD 2D 18 42    AND $4218           AND CNTRL1          ;
+0081E0 85 0C       STA $0C             STA trigger1        ;
+0081E2 AD 18 42    LDA $4218           LDA CNTRL1          ; cntrl1 = CNTRL1;
+0081E5 85 08       STA $08             STA cntrl1          ;
+0081E7 AD 1A 42    LDA $421A           LDA CNTRL2          ; trigger2 = CNTRL2 ^ cntrl1 & CNTRL2;
+0081EA 45 0A       EOR $0A             EOR cntrl2          ;
+0081EC 2D 1A 42    AND $421A           AND CNTRL2          ;
+0081EF 85 0E       STA $0E             STA trigger2        ;
+0081F1 AD 1A 42    LDA $421A           LDA CNTRL2          ;
+0081F4 85 0A       STA $0A             STA cntrl2          ; cntrl2 = CNTRL2;
+0081F6 60          RTS                 RTS                 ; return;
+                                                           ;}
 
 // Irq =========================================================================
 
@@ -402,7 +557,7 @@
 
 // ...
 
-// ResetAudio ==================================================================
+// =============================================================================
 008BA9 C2 F8       REP #$F8
 008BAB 85 10       STA $10
 008BAD 84 12       STY $12
@@ -499,7 +654,7 @@
 
 // DecodeBg3 ===================================================================
                                                            ;DecodeBg3(A) {
-008C72 22 06 B0 02 JSL $02B006         JSL DecodeBg3       ; DecodeBg3_l(A);
+008C72 22 06 B0 02 JSL $02B006         JSL DecodeBg3_l     ; DecodeBg3_l(A);
 008C76 60          RTS                 RTS                 ; return;
                                                            ;}
 
@@ -808,11 +963,11 @@
 008EBA A5 06       LDA $06             LDA nmi_vram        ; if (nmi_vram) {
 008EBC F0 03       BEQ $03             BEQ +               ;
 008EBE 20 49 8E    JSR $8E49           JSR NmiVram         ;   NmiVram();
-008EC1 A5 00       LDA $00          +: LDA nmi_update      ; }
-008EC3 D0 03       BNE $03             BNE +               ; if (nmi_update) {
+008EC1 A5 00       LDA $00          +: LDA nmi_ready       ; }
+008EC3 D0 03       BNE $03             BNE +               ; if (nmi_ready) {
 008EC5 4C 75 8F    JMP $8F75           JMP +skip           ;   // update oam
 008EC8 C2 F8       REP #$F8         +: REP #$F8            ;   Rep(0xF8);
-008ECA E6 02       INC $02             INC nmi_uptick      ;   nmi_uptick++;
+008ECA E6 02       INC $02             INC nmi_tick        ;   nmi_tick++;
 008ECC E2 20       SEP #$20            SEP #$20            ;   Sep(0x20);
 008ECE 9C 02 21    STZ $2102           STZ OAMADD.lo       ;   OAMADD = 0x0000; // addr = 0, pri rot off
 008ED1 9C 03 21    STZ $2103           STZ OAMADD.hi       ;
@@ -993,7 +1148,7 @@
 009095 64 FC       STZ $FC             STZ apu_cmd6        ;   apu_cmd7 = 0x0000;
 009097 64 FE       STZ $FE             STZ apu_cmd7        ; }
 009099 E2 20       SEP #$20        ++: SEP #$20            ; Sep(0x20);
-00909B 64 00       STZ $00             STZ nmi_update      ; nmi_update = 0x00;
+00909B 64 00       STZ $00             STZ nmi_ready       ; nmi_ready = 0x00;
 00909D C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
 00909F AB          PLB                 PLB                 ; B = Pull();
 0090A0 2B          PLD                 PLD                 ; D = Pull();
@@ -1006,27 +1161,29 @@
 
 // Brk =========================================================================
                                                            ;Brk() {
-0090A6 6B          RTL                 RTL                 ; return // Should be RTI
+0090A6 6B          RTL                 RTL                 ; return; // should be RTI
                                                            ;}
 
 // ??? =========================================================================
-0090A7 E2 20       SEP #$20
-0090A9 A9 C0       LDA #$C0
-0090AB 14 ED       TRB $ED
-0090AD 1C 0C 42    TRB $420C
-0090B0 C2 F8       REP #$F8
-0090B2 A9 00 00    LDA #$0000
-0090B5 AA          TAX
-0090B6 9D 00 06    STA $0600,X
-0090B9 E8          INX
-0090BA E8          INX
-0090BB E0 00 04    CPX #$0400
-0090BE D0 F6       BNE $F6    [$90B6]
-0090C0 E2 20       SEP #$20
-0090C2 A9 80       LDA #$80
-0090C4 85 ED       STA $ED
-0090C6 C2 F8       REP #$F8
-0090C8 60          RTS
+                                                           ;???() {
+0090A7 E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+0090A9 A9 C0       LDA #$C0            LDA #$C0            ; hdmaen &= 0x3F;
+0090AB 14 ED       TRB $ED             TRB hdmaen          ;
+0090AD 1C 0C 42    TRB $420C           TRB HDMAEN          ; HDMAEN &= 0x3F;
+0090B0 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+0090B2 A9 00 00    LDA #$0000          LDA #$0000          ; for (X = 0x0000; X != 0x0400; X += 2) {
+0090B5 AA          TAX                 TAX                 ;
+0090B6 9D 00 06    STA $0600,X      -: STA $0600,X         ;   $0600[X] = 0x0000;
+0090B9 E8          INX                 INX                 ;
+0090BA E8          INX                 INX                 ;
+0090BB E0 00 04    CPX #$0400          CPX #$0400          ;
+0090BE D0 F6       BNE $F6             BNE -               ; }
+0090C0 E2 20       SEP #$20            SEP #$20            ; Sep(0x20);
+0090C2 A9 80       LDA #$80            LDA #$80            ; hdmaen = 0x80;
+0090C4 85 ED       STA $ED             STA hdmaen          ;
+0090C6 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
+0090C8 60          RTS                 RTS                 ; return;
+                                                           ;}
 
 // ...
 
@@ -1141,9 +1298,13 @@
 00A08C 64 4A       STZ $4A
 00A08E 60          RTS
 
+// ...
+
 00A0A1 85 9A       STA $9A
 00A0A3 64 8A       STZ $8A
 00A0A5 60          RTS
+
+// ...
 
 // Decode2Vram =================================================================
                                                            ;Decode2Vram(A, Y) {
@@ -1209,8 +1370,8 @@
 00C434 8D 00 21    STA $2100           STA INIDISP         ;
 00C437 A9 80       LDA #$80            LDA #$80            ; VMAIN = 0x80; // Increment on write to VMDATA.hi
 00C439 8D 15 21    STA $2115           STA VMAINC          ;
-00C43C A9 00       LDA #$00            LDA #$00            ; $00 = 0x00;
-00C43E 85 00       STA $00             STA $00             ;
+00C43C A9 00       LDA #$00            LDA #$00            ; nmi_ready = 0x00;
+00C43E 85 00       STA $00             STA nmi_ready       ;
 00C440 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
 00C442 6B          RTL                 RTL                 ; return;
                                                            ;}
@@ -1271,7 +1432,7 @@
 // ...
 
 // 0x58 Mode_license_load ======================================================
-                                                           ;Mode_license_load() {
+                                                           ;ModeLicenseLoad() {
 00C75E C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
 00C760 22 28 C4 00 JSL $00C428         JSL DisableNmi      ; DisableNmi();
 00C764 A9 00 00    LDA #$0000          LDA #$0000          ; DecodeBg3(0x0000); // Bg3 screen
@@ -1290,9 +1451,9 @@
 00C78C A9 00 50    LDA #$5000          LDA #$5000          ;
 00C78F 20 33 BB    JSR $BB33           JSR Decode2Vram     ;
 00C792 20 5B C4    JSR $C45B           JSR $C45B           ; $C45B();
-00C795 A9 04 04    LDA #$0404          LDA #$0404          ; $EE = 0x0404;
-00C798 85 EE       STA $EE             STA $EE             ;
-00C79A 9C 00 0F    STZ $0F00           STZ $0F00           ; $0F00 = 0;
+00C795 A9 04 04    LDA #$0404          LDA #$0404          ; tm = 0x04;
+00C798 85 EE       STA $EE             STA tm              ; ts = 0x04;
+00C79A 9C 00 0F    STZ $0F00           STZ $0F00           ; $0F00 = 0x0000;
 00C79D E6 04       INC $04             INC mode            ; mode++;
 00C79F 22 18 C4 00 JSL $00C418         JSL EnableNmi       ; EnableNmi();
 00C7A3 C2 F8       REP #$F8            REP #$F8            ; Rep(0xF8);
